@@ -23,6 +23,9 @@ type AccessToken struct {
 
 // AuthURL generates URL to authenticate via OAuth
 func (api *API) AuthURL(state string) string {
+	if api.accessTokenURL == nil {
+		return ""
+	}
 
 	query := api.requestTokenURL.Query()
 	query.Set("client_id", api.AppID)
@@ -73,4 +76,35 @@ func (api *API) Authenticate(code string) error {
 	api.Expiry = time.Now().Add(tok.ExpiresIn)
 
 	return nil
+}
+
+// Authenticate with API
+func (api *API) GetAccessToken(code string) (tok AccessToken, err error) {
+	var resp *http.Response
+
+	query := api.accessTokenURL.Query()
+	query = url.Values{
+		"client_id":     {api.AppID},
+		"client_secret": {api.Secret},
+		"code":          {code},
+		"redirect_uri":  {api.callbackURL.String()},
+	}
+	api.accessTokenURL.RawQuery = query.Encode()
+
+	if resp, err = http.Get(api.accessTokenURL.String()); err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if err = json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+		return
+	}
+
+	if tok.Error != "" {
+		err = errors.New(tok.ErrorDescription)
+		return
+	}
+
+	tok.ExpiresIn *= time.Second
+	return
 }

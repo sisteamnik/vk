@@ -1,6 +1,7 @@
 package vk
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"time"
@@ -8,7 +9,7 @@ import (
 
 var (
 	// Version of VK API
-	Version = "5.12"
+	Version = "5.42"
 	// APIURL is a base to make API calls
 	APIURL = "https://api.vk.com/method/"
 	// HTTPS defines if use https instead of http. 1 - use https. 0 - use http
@@ -30,21 +31,33 @@ type API struct {
 }
 
 // NewAPI creates instance of API
-func NewAPI(appID, secret string, scope []string, callback string) *API {
-	var err error
-	var callbackURL *url.URL
+func NewAPI(appID, secret string, scope []string, callback string) (api *API, e error) {
+	var (
+		callbackURL *url.URL
+		reqTokURL   *url.URL
+		accTokURL   *url.URL
+	)
 
 	if appID == "" {
-		return nil
+		e = fmt.Errorf("AppId is nil")
+		return
 	}
 	if secret == "" {
-		return nil
+		e = fmt.Errorf("Secret is nil")
+		return
 	}
-	if callbackURL, err = url.Parse(callback); err != nil {
-		return nil
+	if callbackURL, e = url.Parse(callback); e != nil {
+		//e = fmt.Errorf("CallbackURL is nil")
+		return
 	}
-	reqTokURL, _ := url.Parse("https://oauth.vk.com/authorize")
-	accTokURL, _ := url.Parse("https://oauth.vk.com/access_token")
+	reqTokURL, e = url.Parse("https://oauth.vk.com/authorize")
+	if e != nil {
+		return
+	}
+	accTokURL, e = url.Parse("https://oauth.vk.com/access_token")
+	if e != nil {
+		return
+	}
 
 	return &API{
 		AppID:           appID,
@@ -53,7 +66,7 @@ func NewAPI(appID, secret string, scope []string, callback string) *API {
 		callbackURL:     callbackURL,
 		requestTokenURL: reqTokURL,
 		accessTokenURL:  accTokURL,
-	}
+	}, nil
 }
 
 // getAPIURL prepares URL instance with defined method
